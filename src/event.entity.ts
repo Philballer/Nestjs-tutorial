@@ -11,7 +11,7 @@ export class Event {
   @Column()
   description: string;
 
-  @Column({ name: 'when_date' })
+  @Column()
   when: Date;
 
   @Column()

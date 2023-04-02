@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Attendee } from 'src/attendee/attendee.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 
 @Entity()
 export class Event {
@@ -16,4 +17,9 @@ export class Event {
 
   @Column()
   address: string;
+
+  @OneToMany(() => Attendee, (x) => x.event)
+  attendees: Attendee[];
 }
+
+//x is any name from the class which is the first argument. In the second argument x.event is the what it is related to

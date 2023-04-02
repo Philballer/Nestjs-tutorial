@@ -14,18 +14,24 @@ import {
   HttpStatus,
   BadRequestException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Event } from './event.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Attendee } from 'src/attendee/attendee.entity';
+import { EventsService } from './events.service';
 
 @Controller('/events')
 export class EventsController {
   private readonly logger = new Logger(EventsController.name);
 
   constructor(
+    private eventService: EventsService,
     @InjectRepository(Event)
     private readonly repository: Repository<Event>,
+    @InjectRepository(Attendee)
+    private readonly AttendeeRepository: Repository<Attendee>,
   ) {}
 
   @Get() //Get all events
@@ -36,9 +42,24 @@ export class EventsController {
     return events;
   }
 
+  @Get('practice') //getting all attendees of the event
+  async practice() {
+    const event = await this.repository.findOneBy({ id: 5 });
+    const attendee = new Attendee();
+    attendee.name = 'Phil';
+    attendee.event = event;
+
+    await this.AttendeeRepository.save(attendee);
+    return `Attendee ${attendee.name} would now be attending event with id:${event.id}`;
+  }
+
   @Get(':id') //Get one event
   async findOne(@Param('id', ParseIntPipe) id: number) {
-    return await this.repository.findOneBy({ id: id });
+    const event = await this.repository.findOneBy({ id: id });
+    if (!event) {
+      throw new NotFoundException();
+    }
+    return event;
   }
 
   @Post() //create an event
@@ -52,6 +73,10 @@ export class EventsController {
   @Patch(':id') //update an event, better than Put, to avoid sending complete object
   async update(@Param('id') id, @Body() input: UpdateEventDto) {
     const event = await this.repository.findOneBy({ id: id });
+
+    if (!event) {
+      throw new NotFoundException();
+    }
 
     return await this.repository.save({
       ...event,
@@ -85,3 +110,13 @@ export class EventsController {
 //     where: { id: 3 },
 //   });
 // }
+
+// this.logger.log('Hit events[1] end-point');
+//     const data = await this.repository.findOne({
+//       where: { id: 1 },
+//       relations: ['attendees'],
+//     });
+//     this.logger.debug(
+//       `Found ${data ? 1 : 0} Event with ${data.attendees.length} attendees`,
+//     );
+//     return data;

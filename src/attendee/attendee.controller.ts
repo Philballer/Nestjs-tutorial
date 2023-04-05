@@ -6,8 +6,7 @@ import { AttendeeService } from './attendee.service';
 
 @Controller('/attendees')
 export class AttendeeController {
-  private readonly logger = new Logger(AttendeeController.name);
-
+  private readonly logger = new Logger(AttendeeService.name);
   constructor(
     private attendeeService: AttendeeService,
     @InjectRepository(Attendee)
@@ -17,8 +16,8 @@ export class AttendeeController {
   @Get()
   async getAll() {
     this.logger.log('hit the find-all route');
-    const attendees = this.attendeeRepository.find();
-    this.logger.debug(`Found ${(await attendees).length} attendees`);
+    const attendees = await this.attendeeService.getAll();
+    this.logger.debug(`found ${attendees.length} global attendees`);
     return attendees;
   }
 

@@ -15,12 +15,16 @@ import {
   BadRequestException,
   Logger,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import { Event } from './event.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Attendee } from 'src/attendee/attendee.entity';
 import { EventsService } from './events.service';
+import { ListEvents } from './input/list.events';
+import { log } from 'console';
+import { EventDebugs } from './helpers/string-enums';
 
 @Controller('/events')
 export class EventsController {
@@ -34,10 +38,12 @@ export class EventsController {
     private readonly AttendeeRepository: Repository<Attendee>,
   ) {}
 
+  // prettier-ignore
   @Get() //Get all events
-  async findAll() {
-    this.logger.log('Hit the find-all route');
-    const events = await this.repository.find();
+  async findAll(@Query() filter: ListEvents) {
+    this.logger.log(filter.when? `hit the get-all end-point with query ${filter.when}` : EventDebugs.hitFindAll);
+    const events = await this.eventService
+    .getEventsWithAttendeeCountFiltered(filter);
     this.logger.debug(`Found ${events.length} events`);
     return events;
   }

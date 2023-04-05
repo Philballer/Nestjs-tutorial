@@ -1,9 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Event } from './event.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { query } from 'express';
 import { AttendeeAnswerEnum } from 'src/attendee/attendee.entity';
+import { ListEvents, WhenEventFilter } from './input/list.events';
+import { EventErrors } from './helpers/string-enums';
 
 @Injectable()
 export class EventsService {
@@ -15,9 +17,7 @@ export class EventsService {
   ) {}
 
   private getEventsBaseQuery() {
-    return this.eventsRepository
-      .createQueryBuilder('e')
-      .orderBy('e.id', 'DESC');
+    return this.eventsRepository.createQueryBuilder('e').orderBy('e.id', 'ASC');
   }
 
   // prettier-ignore
@@ -54,6 +54,52 @@ export class EventsService {
         ) 
         
     );
+  }
+
+  public async getEventsWithAttendeeCountFiltered(filter?: ListEvents) {
+    let query = this.getEventsWithAttendeeCountQuery();
+    if (!filter) {
+      return query.getMany();
+    }
+    if (filter.when) {
+      let target = null;
+      if (typeof filter.when === 'string') {
+        target = parseInt(filter.when);
+      }
+      switch (target) {
+        case WhenEventFilter.Today: {
+          query = query.andWhere(
+            `e.when >= CURDATE() AND e.when <= CURDATE() + INTERVAL 1 DAY`,
+          );
+          break;
+        }
+        case WhenEventFilter.Tomorrow: {
+          query = query.andWhere(
+            `e.when >= CURDATE() + INTERVAL AND e.when <= CURDATE() + INTERVAL 2 DAY`,
+          );
+          break;
+        }
+        case WhenEventFilter.ThisWeek: {
+          query = query.andWhere(
+            'YEARWEEK(e.when, 1) = YEARWEEK(CURDATE(), 1)',
+          );
+          break;
+        }
+        case WhenEventFilter.NextWeek: {
+          query = query.andWhere(
+            'YEARWEEK(e.when, 1) = YEARWEEK(CURDATE(), 1) + 1',
+          );
+          break;
+        }
+
+        default:
+          throw new BadRequestException(EventErrors.filterOutOfBounds);
+      }
+
+      return await query.getMany();
+    } else {
+      throw new BadRequestException(EventErrors.filterUndefined);
+    }
   }
 
   // prettier-ignore

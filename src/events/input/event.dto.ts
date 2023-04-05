@@ -18,4 +18,4 @@ export class CreateEventDto {
 
 export class UpdateEventDto extends PartialType(CreateEventDto) {}
 
-//We added a code in main ts so we dont need to pass the pipe in the body of the controller
+//We added a code in main ts so we don't need to pass the pipe in the body of the controller

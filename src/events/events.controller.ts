@@ -1,4 +1,4 @@
-import { CreateEventDto, UpdateEventDto } from './create-event.dto';
+import { CreateEventDto, UpdateEventDto } from './input/event.dto';
 import {
   Controller,
   Get,
@@ -36,7 +36,7 @@ export class EventsController {
 
   @Get() //Get all events
   async findAll() {
-    this.logger.log('Hit the findAll route');
+    this.logger.log('Hit the find-all route');
     const events = await this.repository.find();
     this.logger.debug(`Found ${events.length} events`);
     return events;
@@ -55,8 +55,8 @@ export class EventsController {
 
   @Get(':id') //Get one event
   async findOne(@Param('id', ParseIntPipe) id: number) {
-    const event = await this.repository.findOneBy({ id: id });
-    if (!event) {
+    const event = await this.eventService.getEvent(id);
+    if (event === undefined || event === null) {
       throw new NotFoundException();
     }
     return event;

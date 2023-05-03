@@ -16,6 +16,7 @@ import {
   Logger,
   NotFoundException,
   Query,
+  UsePipes,
 } from '@nestjs/common';
 import { Event } from './event.entity';
 import { Repository } from 'typeorm';
@@ -40,11 +41,16 @@ export class EventsController {
 
   // prettier-ignore
   @Get() //Get all events
+  @UsePipes(new ValidationPipe({ transform: true}))
   async findAll(@Query() filter: ListEvents) {
     this.logger.log(filter.when? `hit the get-all end-point with query ${filter.when}` : EventDebugs.hitFindAll);
     const events = await this.eventService
-    .getEventsWithAttendeeCountFiltered(filter);
-    this.logger.debug(`Found ${events.length} events`);
+    .getEventsWithAttendeeCountFilteredPaginated(filter, 
+      {
+        total: true,
+        currentPage: filter.page,
+        limit:10
+      });
     return events;
   }
 
@@ -61,11 +67,8 @@ export class EventsController {
 
   @Get(':id') //Get one event
   async findOne(@Param('id', ParseIntPipe) id: number) {
-    const event = await this.eventService.getEvent(id);
-    if (event === undefined || event === null) {
-      throw new NotFoundException();
-    }
-    return event;
+    const result = await this.eventService.deleteEvent(id);
+    throw new NotFoundException();
   }
 
   @Post() //create an event
@@ -95,8 +98,12 @@ export class EventsController {
   @HttpCode(204) //Best code for delete. @HttpCode allows you to set your code
   async remove(@Param('id') id) {
     try {
-      const event = await this.repository.findOneBy({ id: id }); // i used the destructuring of params here
-      await this.repository.remove(event); // an event is passed as an argument here
+      const result = await this.eventService.deleteEvent(id);
+      if (result?.affected !== 1) {
+        throw new NotFoundException();
+      }
+      // const event = await this.repository.findOneBy({ id: id }); // i used the destructuring of params here
+      // await this.repository.remove(event); // an event is passed as an argument here
     } catch (error) {
       if (error.name === 'MustBeEntityError') {
         throw new BadRequestException(`Event with id:${id} not found`);

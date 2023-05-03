@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import ormConfig from './config/orm.config';
 import { SchoolModule } from './school/school.module';
 import { AttendeeModule } from './attendee/attendee.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AttendeeModule } from './attendee/attendee.module';
       isGlobal: true,
       load: [ormConfig],
     }),
+    AuthModule,
     EventsModule,
     AttendeeModule,
   ],

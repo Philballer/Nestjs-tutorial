@@ -1,16 +1,14 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Event } from './event.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { query } from 'express';
 import { AttendeeAnswerEnum } from 'src/attendee/attendee.entity';
 import { ListEvents, WhenEventFilter } from './input/list.events';
-import { EventErrors } from './helpers/string-enums';
+import { PaginateOptions, paginate } from 'src/pagination/paginator';
 
 @Injectable()
 export class EventsService {
-  private readonly logger = new Logger(EventsService.name);
-
   constructor(
     @InjectRepository(Event)
     private eventsRepository: Repository<Event>,
@@ -56,11 +54,9 @@ export class EventsService {
     );
   }
 
-  public async getEventsWithAttendeeCountFiltered(filter?: ListEvents) {
+  private async getEventsWithAttendeeCountFiltered(filter?: ListEvents) {
     let query = this.getEventsWithAttendeeCountQuery();
-    if (!filter) {
-      return query.getMany();
-    }
+
     if (filter.when) {
       let target = null;
       if (typeof filter.when === 'string') {
@@ -75,7 +71,7 @@ export class EventsService {
         }
         case WhenEventFilter.Tomorrow: {
           query = query.andWhere(
-            `e.when >= CURDATE() + INTERVAL AND e.when <= CURDATE() + INTERVAL 2 DAY`,
+            `e.when >= CURDATE() + INTERVAL 1 DAY AND e.when <= CURDATE() + INTERVAL 2 DAY`,
           );
           break;
         }
@@ -91,15 +87,22 @@ export class EventsService {
           );
           break;
         }
-
-        default:
-          throw new BadRequestException(EventErrors.filterOutOfBounds);
       }
 
-      return await query.getMany();
-    } else {
-      throw new BadRequestException(EventErrors.filterUndefined);
+      return query;
     }
+
+    return query;
+  }
+
+  public async getEventsWithAttendeeCountFilteredPaginated(
+    filter: ListEvents,
+    paginateOptions: PaginateOptions,
+  ) {
+    return await paginate(
+      await this.getEventsWithAttendeeCountFiltered(filter),
+      paginateOptions,
+    );
   }
 
   // prettier-ignore
@@ -109,6 +112,14 @@ export class EventsService {
     .andWhere('e.id = :id',{ id },);
     // this.logger.debug(query.getSql()); //prints out the sql that would be generated to execute this query
     return query.getOne();
+  }
+
+  public async deleteEvent(id: number) {
+    return await this.eventsRepository
+      .createQueryBuilder('e')
+      .delete()
+      .where('id = :id', { id })
+      .execute();
   }
 }
 

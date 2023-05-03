@@ -23,7 +23,7 @@ export class AttendeeController {
 
   @Get(':id')
   async getAttendeeGroup(@Param('id', ParseIntPipe) id: number) {
-    const attendees = this.attendeeRepository.findBy({});
+    const attendees = await this.attendeeRepository.findBy({});
     return attendees;
   }
 }

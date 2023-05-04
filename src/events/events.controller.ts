@@ -54,16 +54,16 @@ export class EventsController {
     return events;
   }
 
-  @Get('practice') //getting all attendees of the event
-  async practice() {
-    const event = await this.repository.findOneBy({ id: 5 });
-    const attendee = new Attendee();
-    attendee.name = 'Phil';
-    attendee.event = event;
+  // @Get('practice') //getting all attendees of the event
+  // async practice() {
+  //   const event = await this.repository.findOneBy({ id: 5 });
+  //   const attendee = new Attendee();
+  //   attendee.name = 'Phil';
+  //   attendee.event = event;
 
-    await this.AttendeeRepository.save(attendee);
-    return `Attendee ${attendee.name} would now be attending event with id:${event.id}`;
-  }
+  //   await this.AttendeeRepository.save(attendee);
+  //   return `Attendee ${attendee.name} would now be attending event with id:${event.id}`;
+  // }
 
   @Get(':id') //Get one event
   async findOne(@Param('id', ParseIntPipe) id: number) {

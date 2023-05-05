@@ -17,27 +17,28 @@ import {
   NotFoundException,
   Query,
   UsePipes,
+  UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
-import { Event } from './event.entity';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Attendee } from 'src/attendee/attendee.entity';
 import { EventsService } from './events.service';
 import { ListEvents } from './input/list.events';
 import { log } from 'console';
 import { EventDebugs } from './helpers/string-enums';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { User } from 'src/users/user.entity';
+import { AuthGuardJwt } from 'src/auth/passport-strategies/strategy-exports/auth-guard.jwt';
 
 @Controller('/events')
 export class EventsController {
   private readonly logger = new Logger(EventsController.name);
 
   constructor(
-    private eventService: EventsService,
-    @InjectRepository(Event)
-    private readonly repository: Repository<Event>,
-    @InjectRepository(Attendee)
-    private readonly AttendeeRepository: Repository<Attendee>,
-  ) {}
+    private eventService: EventsService, // @InjectRepository(Event)
+  ) // private readonly repository: Repository<Event>,
+  // @InjectRepository(Attendee)
+  // private readonly AttendeeRepository: Repository<Attendee>,
+  // * Avoid injecting repos in the controllers, good practice is to inject in the services
+  {}
 
   // prettier-ignore
   @Get() //Get all events
@@ -67,53 +68,57 @@ export class EventsController {
 
   @Get(':id') //Get one event
   async findOne(@Param('id', ParseIntPipe) id: number) {
-    const result = await this.eventService.deleteEvent(id);
-    throw new NotFoundException();
+    const result = await this.eventService.getEvent(id);
+    this.logger.log(
+      `Get single event endpoint hit: ${result ? '1' : '0'} Entry`,
+    );
+    if (!result) throw new NotFoundException(`Event with id:${id} not found`);
+    return result;
   }
 
   @Post() //create an event
-  async create(@Body() input: CreateEventDto) {
-    return await this.repository.save({
-      ...input,
-      when: new Date(input.when),
-    });
+  @UseGuards(AuthGuardJwt)
+  async create(@Body() input: CreateEventDto, @CurrentUser() user: User) {
+    return await this.eventService.createEvent(input, user);
   }
 
   @Patch(':id') //update an event, better than Put, to avoid sending complete object
-  async update(@Param('id') id, @Body() input: UpdateEventDto) {
-    const event = await this.repository.findOneBy({ id: id });
+  @UseGuards(AuthGuardJwt)
+  async update(
+    @Param('id') id,
+    @Body() input: UpdateEventDto,
+    @CurrentUser() user: User,
+  ) {
+    const event = await this.eventService.getEvent(id);
 
     if (!event) {
       throw new NotFoundException();
     }
 
-    return await this.repository.save({
-      ...event,
-      ...input,
-      when: input.when ? new Date(input.when) : event.when,
-    });
+    if (event.organizerId !== user.id) {
+      throw new ForbiddenException(
+        null,
+        'Current user not authorized to change this event',
+      );
+    }
+
+    return this.eventService.updateEvent(event, input);
   }
 
   @Delete(':id') //delete an event
   @HttpCode(204) //Best code for delete. @HttpCode allows you to set your code
-  async remove(@Param('id') id) {
-    try {
-      const result = await this.eventService.deleteEvent(id);
-      if (result?.affected !== 1) {
-        throw new NotFoundException();
-      }
-      // const event = await this.repository.findOneBy({ id: id }); // i used the destructuring of params here
-      // await this.repository.remove(event); // an event is passed as an argument here
-    } catch (error) {
-      if (error.name === 'MustBeEntityError') {
-        throw new BadRequestException(`Event with id:${id} not found`);
-      } else {
-        throw new HttpException(
-          'internal server error',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
+  @UseGuards(AuthGuardJwt)
+  async remove(@Param('id') id, @CurrentUser() user: User) {
+    this.logger.log('Delete event endpoint hit');
+    const event = await this.eventService.getEvent(id);
+    if (!event) throw new NotFoundException();
+    if (event.organizerId !== user.id) {
+      throw new ForbiddenException(
+        null,
+        'Current user not authorized to delete this event',
+      );
     }
+    await this.eventService.deleteEvent(id);
   }
 }
 

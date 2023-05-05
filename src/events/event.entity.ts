@@ -1,5 +1,13 @@
 import { Attendee } from 'src/attendee/attendee.entity';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { User } from 'src/users/user.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 
 @Entity()
 export class Event {
@@ -22,6 +30,13 @@ export class Event {
   attendees: Attendee[];
   //first argument is a function that returns the related type
   //second argument is the property on the relation that points to this owning class eg attendee.events point here
+
+  @ManyToOne(() => User, (x) => x.organizedEvents)
+  @JoinColumn({ name: 'organizerId' })
+  organizer: User;
+
+  @Column({ nullable: true })
+  organizerId: number;
 
   attendeeCount?: number;
   attendeeUnanswered?: number;

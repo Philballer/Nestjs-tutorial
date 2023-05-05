@@ -1,0 +1,1 @@
+Classes here are used solely to export the two passport strategies so we don't have to be typing the name manually in the auth Guard

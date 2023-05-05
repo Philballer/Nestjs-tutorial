@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { Event } from './event.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,6 +10,8 @@ import { query } from 'express';
 import { AttendeeAnswerEnum } from 'src/attendee/attendee.entity';
 import { ListEvents, WhenEventFilter } from './input/list.events';
 import { PaginateOptions, paginate } from 'src/pagination/paginator';
+import { CreateEventDto, UpdateEventDto } from './input/event.dto';
+import { User } from 'src/users/user.entity';
 
 @Injectable()
 export class EventsService {
@@ -112,6 +118,25 @@ export class EventsService {
     .andWhere('e.id = :id',{ id },);
     // this.logger.debug(query.getSql()); //prints out the sql that would be generated to execute this query
     return query.getOne();
+  }
+
+  public async createEvent(input: CreateEventDto, user: User): Promise<Event> {
+    return await this.eventsRepository.save({
+      ...input,
+      organizer: user,
+      when: new Date(input.when),
+    });
+  }
+
+  public async updateEvent(
+    event: Event,
+    input: UpdateEventDto,
+  ): Promise<Event> {
+    return await this.eventsRepository.save({
+      ...event,
+      ...input,
+      when: input.when ? new Date(input.when) : event.when,
+    });
   }
 
   public async deleteEvent(id: number) {
